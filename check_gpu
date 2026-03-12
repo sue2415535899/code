@@ -1,0 +1,39 @@
+import torch
+import paddle
+import time
+
+def bytes_to_mb(b):
+    return b / 1024**2
+
+def monitor_gpu(interval=1.0, device_index=0):
+    """
+    实时监控 GPU 显存使用情况（PyTorch + Paddle）
+    
+    interval: 刷新间隔，单位秒
+    device_index: GPU id
+    """
+    print(f"{'Framework':<10} {'Allocated(MB)':>15} {'Reserved(MB)':>15}")
+    print("="*45)
+
+    num_gpus = torch.cuda.device_count()
+    try:
+        while True:
+            for device_index in range(num_gpus):
+                # PyTorch
+                torch_alloc = bytes_to_mb(torch.cuda.memory_allocated(device_index))
+                torch_reserved = bytes_to_mb(torch.cuda.memory_reserved(device_index))
+
+                # Paddle
+                paddle_alloc = bytes_to_mb(paddle.device.cuda.memory_allocated(f'gpu:{device_index}'))
+                paddle_reserved = bytes_to_mb(paddle.device.cuda.memory_reserved(f'gpu:{device_index}'))
+
+                print(f"GPU{device_index}:{'PyTorch':<10} {torch_alloc:>15.2f} {torch_reserved:>15.2f}")
+                print(f"GPU{device_index}:{'Paddle':<10} {paddle_alloc:>15.2f} {paddle_reserved:>15.2f}")
+
+            time.sleep(interval)
+              print("-"*45)
+    except KeyboardInterrupt:
+        print("监控结束")
+
+if __name__ == "__main__":
+    monitor_gpu(interval=2.0, device_index=0)
