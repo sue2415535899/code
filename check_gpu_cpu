@@ -1,0 +1,32 @@
+import os
+import psutil
+
+def check_gpu(self):
+        pid = os.getpid()
+        logger.info(f"pid:{pid}")
+        p = psutil.Process(pid)
+
+        nvmlInit()
+
+        cpu = p.cpu_percent(interval=1)
+        mem = p.memory_info().rss / 1024 ** 2
+
+        gpu_mem = 0
+        gpu_id = None
+
+        for i in range(nvmlDeviceGetCount()):
+            handle = nvmlDeviceGetHandleByIndex(i)
+            procs = nvmlDeviceGetComputeRunningProcesses(handle)
+
+            for proc in procs:
+                #if proc.pid == pid:
+                    gpu_id = i
+                    gpu_mem = proc.usedGpuMemory / 1024 ** 2
+                    logger.info(f"pid:{proc.pid} CPU:{cpu:.1f}%  RAM:{mem:.1f}MB  GPU:{gpu_id}  GPU_MEM:{gpu_mem:.1f}MB")
+
+def get_memory_usage(self):
+        torch.cuda.synchronize()
+        paddle_gpu = paddle.device.cuda.memory_allocated()
+        torch_gpu = torch.cuda.memory_allocated()
+        logger.info(f"torch allocated GPU:{torch_gpu / 1024 ** 2}")
+        logger.info(f"paddle allocated GPU:{paddle_gpu / 1024 ** 2}")
