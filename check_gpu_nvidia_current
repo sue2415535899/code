@@ -1,0 +1,65 @@
+#pip install psutil pynvml
+#python monitor_resources.py
+#!/usr/bin/env python3
+# monitor_resources.py
+import time
+import psutil
+try:
+    import pynvml
+    NVML_AVAILABLE = True
+except ImportError:
+    NVML_AVAILABLE = False
+
+def init_gpu():
+    if NVML_AVAILABLE:
+        pynvml.nvmlInit()
+        gpu_count = pynvml.nvmlDeviceGetCount()
+        return gpu_count
+    else:
+        print("pynvml not installed, GPU monitoring disabled.")
+        return 0
+
+def get_gpu_usage(gpu_count):
+    usage_list = []
+    if not NVML_AVAILABLE or gpu_count == 0:
+        return usage_list
+    for i in range(gpu_count):
+        handle = pynvml.nvmlDeviceGetHandleByIndex(i)
+        mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+        util = pynvml.nvmlDeviceGetUtilizationRates(handle)
+        usage_list.append({
+            "gpu_index": i,
+            "gpu_util_percent": util.gpu,
+            "mem_used_MB": mem_info.used // 1024**2,
+            "mem_total_MB": mem_info.total // 1024**2
+        })
+    return usage_list
+
+def get_cpu_memory_usage():
+    cpu_percent = psutil.cpu_percent(interval=1)
+    mem = psutil.virtual_memory()
+    return {
+        "cpu_percent": cpu_percent,
+        "mem_used_MB": mem.used // 1024**2,
+        "mem_total_MB": mem.total // 1024**2
+    }
+
+def monitor(interval=5):
+    gpu_count = init_gpu()
+    try:
+        while True:
+            cpu_mem = get_cpu_memory_usage()
+            gpu_usages = get_gpu_usage(gpu_count)
+            
+            print("="*40)
+            print(f"CPU Usage: {cpu_mem['cpu_percent']}% | RAM: {cpu_mem['mem_used_MB']}/{cpu_mem['mem_total_MB']} MB")
+            
+            for gpu in gpu_usages:
+                print(f"GPU{gpu['gpu_index']} | Util: {gpu['gpu_util_percent']}% | Mem: {gpu['mem_used_MB']}/{gpu['mem_total_MB']} MB")
+            
+            time.sleep(interval)
+    except KeyboardInterrupt:
+        print("\nMonitoring stopped.")
+
+if __name__ == "__main__":
+    monitor(interval=5)
